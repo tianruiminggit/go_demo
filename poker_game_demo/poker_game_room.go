@@ -1,5 +1,5 @@
 package main
 
-func init_room()  {
+func initRoom()  {
 	
 }

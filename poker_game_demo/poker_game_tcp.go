@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"net/url"
 )
 
 type UserSocket struct {
@@ -13,7 +14,13 @@ type UserSocket struct {
 
 type UserMsg struct {
 	Name string `json:"name"`
+	CMD  string `json:"cmd"`
 	Msg  string `json:"msg"`
+}
+
+type BroadcastMsg struct {
+	CMD string `json:"cmd"`
+	Msg string `json:"msg"`
 }
 
 var UserSocketMap map[string]UserSocket
@@ -41,11 +48,12 @@ func main() {
 		}
 
 		// 在新的goroutine中处理连接
-		go receiveClientMsg(conn)
+		go goReceiveClientMsg(conn)
 	}
 }
 
-func receiveClientMsg(conn net.Conn) {
+// Goroutine ：：玩家的socket监听  接受原始请求
+func goReceiveClientMsg(conn net.Conn) {
 	buffer := make([]byte, 512)
 	for {
 		_, err := conn.Read(buffer)
@@ -63,12 +71,32 @@ func receiveClientMsg(conn net.Conn) {
 			fmt.Println("Error decoding from JSON:", msgErr)
 			return
 		}
-		fmt.Println("Msg is ===", userMsg)
+		argsMap, _ := url.ParseQuery(userMsg.Msg)
+		fmt.Println("Msg is ===", userMsg, argsMap)
 		//添加
 		UserSocketMap[userMsg.Name] = UserSocket{userMsg.Name, &conn}
 		// 发送响应
 		_, err = conn.Write([]byte("Message received by server."))
+		if err != nil {
+			fmt.Println("Error decoding from JSON:", err)
+			return
+		}
 	}
+}
+
+func goSendMsgTOClient(conn *net.Conn, chanMsg *chan BroadcastMsg) {
+	for {
+		msg := <-*chanMsg
+		_, err := (*conn).Write([]byte(msg.Msg))
+		if err != nil {
+			fmt.Println(" goSendMsgTOClient Error decoding from JSON:", err)
+			return
+		}
+	}
+}
+
+func goHandleClientQuest() {
+
 }
 
 func initData() {
