@@ -8,8 +8,9 @@ import (
 )
 
 type UserSocket struct {
-	Name    string    `json:"name"`
-	NetConn *net.Conn `json:"net_conn"`
+	Name              string    `json:"name"`
+	NetConn           *net.Conn `json:"net_conn"`
+	chanHandleRequest *chan UserMsg
 }
 
 type UserMsg struct {
@@ -24,7 +25,6 @@ type BroadcastMsg struct {
 }
 
 var UserSocketMap map[string]UserSocket
-var RoomGoroutineMap map[string]int
 
 func main() {
 	listener, err := net.Listen("tcp", "192.168.4.65:8081")
@@ -72,19 +72,24 @@ func goReceiveClientMsg(conn net.Conn) {
 			return
 		}
 		argsMap, _ := url.ParseQuery(userMsg.Msg)
-		fmt.Println("Msg is ===", userMsg, argsMap)
-		//添加
-		UserSocketMap[userMsg.Name] = UserSocket{userMsg.Name, &conn}
-		// 发送响应
-		_, err = conn.Write([]byte("Message received by server."))
-		if err != nil {
-			fmt.Println("Error decoding from JSON:", err)
-			return
+		userSocket, exist := UserSocketMap[userMsg.Name]
+		fmt.Println("Msg is ===", userMsg, argsMap, exist, UserSocketMap)
+		if exist {
+			*(userSocket.chanHandleRequest) <- userMsg
+		} else {
+			//添加
+			//goHandleClientQuest 通道 500个请求缓冲
+			chanGoHandleClientQuest := make(chan UserMsg, 500)
+			UserSocketMap[userMsg.Name] = UserSocket{userMsg.Name, &conn, &chanGoHandleClientQuest}
+			go goHandleClientQuest(&conn, &chanGoHandleClientQuest)
+			chanGoHandleClientQuest <- userMsg
 		}
+		//go goHandleClientQuest(&conn,&chanGoHandleClientQuest)
+
 	}
 }
 
-func goSendMsgTOClient(conn *net.Conn, chanMsg *chan BroadcastMsg) {
+func goSendMsgToClient(conn *net.Conn, chanMsg *chan BroadcastMsg) {
 	for {
 		msg := <-*chanMsg
 		_, err := (*conn).Write([]byte(msg.Msg))
@@ -95,13 +100,42 @@ func goSendMsgTOClient(conn *net.Conn, chanMsg *chan BroadcastMsg) {
 	}
 }
 
-func goHandleClientQuest() {
-
+func goHandleClientQuest(conn *net.Conn, chanMsg *chan UserMsg) {
+	for msg := range *chanMsg {
+		response := cmd2Function(msg)
+		fmt.Println("goHandleClientQuest call return", response)
+		// 发送响应
+		_, err := (*conn).Write([]byte(response.Msg))
+		if err != nil {
+			fmt.Println("Error decoding from JSON:", err)
+			return
+		}
+	}
 }
 
 func initData() {
 	//玩家socketMap
 	UserSocketMap = make(map[string]UserSocket)
-	//房间GoRoutineMap
-	RoomGoroutineMap = make(map[string]int)
+	initRoom()
+}
+
+func sendClientMsg(names []string, msg map[string]string) {
+	fmt.Println("sendClientMsg", names)
+	for _, name := range names {
+		socket, exist := UserSocketMap[name]
+		if exist {
+			// 将map转换为JSON字节切片
+			jsonBytes, err := json.Marshal(msg)
+			if err != nil {
+				fmt.Println("Error marshaling map:", err)
+				return
+			}
+
+			_, err = (*(socket.NetConn)).Write(jsonBytes)
+			if err != nil {
+				fmt.Println("Error decoding from JSON:", err)
+				return
+			}
+		}
+	}
 }
