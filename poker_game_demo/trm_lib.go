@@ -50,10 +50,10 @@ func (msg *UserMsg) GetUserSocket(args map[string][]string) ClientResponse {
 }
 
 func (msg *UserMsg) PlayerRoomOperate(args map[string][]string) ClientResponse {
-	fmt.Println("PlayerRoomOperate Args =", args, RoomMap)
 	roomId := args["roomId"][0]
 	operate := args["operate"][0]
 	room, exist := RoomMap[roomId]
+	fmt.Println("PlayerRoomOperate Args =", args, RoomMap, exist)
 	if exist {
 		*(room.chanPlayerOperate) <- RoomMsg{msg.Name, roomId, operate}
 		return ClientResponse{1, "PlayerRoomOperate"}

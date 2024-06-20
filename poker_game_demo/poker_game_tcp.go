@@ -2,7 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
+	"log"
 	"net"
 	"net/url"
 )
@@ -29,13 +29,13 @@ var UserSocketMap map[string]UserSocket
 func main() {
 	listener, err := net.Listen("tcp", "192.168.4.65:8081")
 	if err != nil {
-		fmt.Println("Error listening:", err.Error())
+		log.Println("Error listening:", err.Error())
 		return
 	}
 	//defer listener.Close()
 	initData()
 
-	fmt.Println("Server started on port 8080")
+	log.Println("Server started on port 8080")
 
 	//初始数据
 
@@ -43,7 +43,7 @@ func main() {
 		// 接受新的连接请求
 		conn, err := listener.Accept()
 		if err != nil {
-			fmt.Println("Error accepting: ", err.Error())
+			log.Println("Error accepting: ", err.Error())
 			continue
 		}
 
@@ -58,22 +58,22 @@ func goReceiveClientMsg(conn net.Conn) {
 	for {
 		_, err := conn.Read(buffer)
 		if err != nil {
-			fmt.Println("Error reading:", err.Error())
+			log.Println("Error reading:", err.Error())
 			return
 		}
 		head := buffer[:4]
 		headNum := int32(head[0]<<24) + int32(head[1]<<16) + int32(head[2]<<8) + int32(head[3])
 		message := buffer[4 : headNum+4]
-		fmt.Println("Received message:", headNum, message, string(message))
+		log.Println("Received message:", headNum, message, string(message))
 		var userMsg UserMsg
 		msgErr := json.Unmarshal(message, &userMsg)
 		if msgErr != nil {
-			fmt.Println("Error decoding from JSON:", msgErr)
+			log.Println("Error decoding from JSON:", msgErr)
 			return
 		}
 		argsMap, _ := url.ParseQuery(userMsg.Msg)
 		userSocket, exist := UserSocketMap[userMsg.Name]
-		fmt.Println("Msg is ===", userMsg, argsMap, exist, UserSocketMap)
+		log.Println("Msg is ===", userMsg, argsMap, exist, UserSocketMap)
 		if exist {
 			*(userSocket.chanHandleRequest) <- userMsg
 		} else {
@@ -94,7 +94,7 @@ func goSendMsgToClient(conn *net.Conn, chanMsg *chan BroadcastMsg) {
 		msg := <-*chanMsg
 		_, err := (*conn).Write([]byte(msg.Msg))
 		if err != nil {
-			fmt.Println(" goSendMsgTOClient Error decoding from JSON:", err)
+			log.Println(" goSendMsgTOClient Error decoding from JSON:", err)
 			return
 		}
 	}
@@ -103,11 +103,11 @@ func goSendMsgToClient(conn *net.Conn, chanMsg *chan BroadcastMsg) {
 func goHandleClientQuest(conn *net.Conn, chanMsg *chan UserMsg) {
 	for msg := range *chanMsg {
 		response := cmd2Function(msg)
-		fmt.Println("goHandleClientQuest call return", response)
+		log.Println("goHandleClientQuest call return", response)
 		// 发送响应
 		_, err := (*conn).Write([]byte(response.Msg))
 		if err != nil {
-			fmt.Println("Error decoding from JSON:", err)
+			log.Println("Error decoding from JSON:", err)
 			return
 		}
 	}
@@ -120,20 +120,22 @@ func initData() {
 }
 
 func sendClientMsg(names []string, msg map[string]string) {
-	fmt.Println("sendClientMsg", names)
+	log.Println("sendClientMsg", names)
 	for _, name := range names {
 		socket, exist := UserSocketMap[name]
 		if exist {
+			log.Println("sendClientMsg name = ", name)
+			msg["receive"] = name
 			// 将map转换为JSON字节切片
 			jsonBytes, err := json.Marshal(msg)
 			if err != nil {
-				fmt.Println("Error marshaling map:", err)
+				log.Println("Error marshaling map:", err)
 				return
 			}
 
 			_, err = (*(socket.NetConn)).Write(jsonBytes)
 			if err != nil {
-				fmt.Println("Error decoding from JSON:", err)
+				log.Println("Error decoding from JSON:", err)
 				return
 			}
 		}

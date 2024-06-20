@@ -40,15 +40,14 @@ func initRoom() {
 func goRoomControl(chanPlayerOperate *chan RoomMsg, chanRoomProgress *chan int) {
 	//pos当为key
 	playerMap := make(map[string]roomPlayer)
-	fmt.Println(playerMap)
-
-	select {
-	case operateMsg := <-*chanPlayerOperate:
-		doPlayerOperate(operateMsg, &playerMap)
-		break
-	case <-*chanRoomProgress:
-		break
+	for  {
+		select {
+		case operateMsg := <-*chanPlayerOperate:
+			doPlayerOperate(operateMsg, &playerMap)
+		case <-*chanRoomProgress:
+		}
 	}
+
 }
 func doPlayerOperate(msg RoomMsg, playerMap *map[string]roomPlayer) {
 	fmt.Println("doPlayerOperate Map =", *playerMap, msg)
@@ -58,6 +57,7 @@ func doPlayerOperate(msg RoomMsg, playerMap *map[string]roomPlayer) {
 		name := msg.name
 		_, exist := (*playerMap)[name]
 		if exist {
+			fmt.Println("player exist")
 			break
 		}
 		//获取房间内所有玩家,推送新玩家加入
@@ -70,6 +70,6 @@ func doPlayerOperate(msg RoomMsg, playerMap *map[string]roomPlayer) {
 		(*playerMap)[name] = roomPlayer{name, 1}
 		break
 	case "2":
-		fmt.Println("doPlayerOperate =2=",*playerMap)
+		fmt.Println("doPlayerOperate =2=", *playerMap)
 	}
 }
