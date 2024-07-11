@@ -62,12 +62,12 @@ type myJson struct {
 var AllNode [][]posNode
 
 func main() {
-	fmt.Println("hell A Star Web")
+	//fmt.Println("hell A Star Web")
 	http.HandleFunc("/getMap", getMap)
 	http.HandleFunc("/getRoad", getRoad)
 	err := http.ListenAndServe("192.168.4.65:8099", nil)
 	if err != nil {
-		fmt.Println("http_err", err)
+		//fmt.Println("http_err", err)
 	}
 }
 
@@ -77,22 +77,22 @@ func main() {
 //获取地图数据
 func getMap(rw http.ResponseWriter, req *http.Request) {
 	rw.Header().Set("Access-Control-Allow-Origin", "*")
-	fmt.Println("hell")
+	//fmt.Println("hell")
 	mapSize, err1 := strconv.Atoi(req.FormValue(`mapSize`))
 	limitNum, err2 := strconv.Atoi(req.FormValue(`limitNum`))
 	if err1 != nil || err2 != nil {
-		fmt.Println("args error", err1, err2)
+		//fmt.Println("args error", err1, err2)
 		return
 	}
-	fmt.Println("mapSize ====", mapSize, limitNum)
+	//fmt.Println("mapSize ====", mapSize, limitNum)
 	rand.Seed(time.Now().UnixNano())
 	AllNode = makeMap(mapSize, limitNum)
-	x1 := rand.Intn(mapSize)
-	y1 := rand.Intn(mapSize)
-	x2 := rand.Intn(mapSize)
-	y2 := rand.Intn(mapSize)
-	fmt.Println(x1, y1, x2, y2)
-	fmt.Println("AllNode ==", AllNode)
+	//x1 := rand.Intn(mapSize)
+	//y1 := rand.Intn(mapSize)
+	//x2 := rand.Intn(mapSize)
+	//y2 := rand.Intn(mapSize)
+	//fmt.Println(x1, y1, x2, y2)
+	//fmt.Println("AllNode ==", AllNode)
 	// 设置响应内容类型为JSON
 	rw.Header().Set("Content-Type", "application/json")
 	// 使用json.NewEncoder将结构体编码为JSON并写入响应体
@@ -109,14 +109,16 @@ func getRoad(rw http.ResponseWriter, req *http.Request) {
 	starYPos, err2 := strconv.Atoi(req.FormValue(`starY`))
 	endXPos, err3 := strconv.Atoi(req.FormValue(`endX`))
 	endXYos, err4 := strconv.Atoi(req.FormValue(`endY`))
-	fmt.Println("GetRole Args ===", starXPos, starYPos, endXPos, endXYos)
+	//fmt.Println("GetRole Args ===", starXPos, starYPos, endXPos, endXYos)
 	if err1 != nil || err2 != nil || err3 != nil || err4 != nil {
-		fmt.Println("args error", err1, err2)
+		//fmt.Println("args error", err1, err2)
 		return
 	}
 	Line, lErr := AStar(&AllNode[starXPos][starYPos].Pos, &AllNode[endXPos][endXYos].Pos)
 	if lErr == nil {
 		json.NewEncoder(rw).Encode(Line)
+	} else {
+		json.NewEncoder(rw).Encode("{msg:找不到路径}")
 	}
 	return
 }
@@ -184,15 +186,15 @@ func AStar(startPos *position, endPos *position) ([]position, error) {
 		current := heap.Pop(&openList).(gNode)
 		closeList = append(closeList, current)
 		//取出第一个 (f最小值) 判断是否为终点
-		fmt.Println("open is =", openList)
-		fmt.Println("close is =", closeList)
+		//fmt.Println("open is =", openList)
+		//fmt.Println("close is =", closeList)
 		if current.pos == *endPos {
-			fmt.Println("找到路径拉")
-			fmt.Println("END open is =", openList)
-			fmt.Println("End close is =", closeList)
+			//fmt.Println("找到路径拉")
+			//fmt.Println("END open is =", openList)
+			//fmt.Println("End close is =", closeList)
 			//构建路线
 			Line := makeLine(&closeList)
-			fmt.Println("最终路线为:===", Line)
+			//fmt.Println("最终路线为:===", Line)
 			return Line, nil
 		}
 		//	遍历周围八点 继续找F最小的节点

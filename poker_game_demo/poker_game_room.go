@@ -5,6 +5,21 @@ import (
 	"strconv"
 )
 
+/*
+玩家状态常量
+*/
+const (
+	PlayerStateFree    = 0 //空闲
+	PlayerStatePrepare = 1 //准备
+	PlayerStateWatch   = 2 //观战
+)
+
+//自定义数据类型
+
+type SendMsg map[string]string
+
+//自定义struct
+
 type GameRoom struct {
 	id                int
 	chanPlayerOperate *chan RoomMsg
@@ -18,9 +33,9 @@ type RoomMsg struct {
 }
 
 type roomPlayer struct {
-	Name string `json:"name"`
-	Pos  int    `json:"pos"` //位置
-
+	Name  string `json:"name"`
+	Pos   int    `json:"pos"` //位置
+	State int    `json:"state"`
 }
 
 var RoomMap map[string]GameRoom
@@ -40,7 +55,7 @@ func initRoom() {
 func goRoomControl(chanPlayerOperate *chan RoomMsg, chanRoomProgress *chan int) {
 	//pos当为key
 	playerMap := make(map[string]roomPlayer)
-	for  {
+	for {
 		select {
 		case operateMsg := <-*chanPlayerOperate:
 			doPlayerOperate(operateMsg, &playerMap)
@@ -60,16 +75,52 @@ func doPlayerOperate(msg RoomMsg, playerMap *map[string]roomPlayer) {
 			fmt.Println("player exist")
 			break
 		}
-		//获取房间内所有玩家,推送新玩家加入
-		var keys []string
-		for key := range *playerMap {
-			keys = append(keys, key)
-		}
-		sendClientMsg(keys, map[string]string{"name": "trm"})
+		temp := roomPlayer{name, 1, PlayerStateFree}
+		sendAllRoomMsg(playerMap, formatPlayerSendMsg(temp))
 		//加入新玩家
-		(*playerMap)[name] = roomPlayer{name, 1}
+		(*playerMap)[name] = temp
 		break
 	case "2":
 		fmt.Println("doPlayerOperate =2=", *playerMap)
+	case "3": //准备/取消准备
+		name := msg.name
+		player, exist := (*playerMap)[name]
+		if exist {
+			if player.State == PlayerStateFree {
+				player.State = PlayerStatePrepare
+			}
+
+			if player.State == PlayerStatePrepare {
+				player.State = PlayerStateFree
+			}
+			sendRoomMsg(playerMap, formatPlayerSendMsg(player), player.Name)
+		}
 	}
+}
+
+// 给房间所有人发送消息
+func sendAllRoomMsg(playerMap *map[string]roomPlayer, msg SendMsg) {
+	//获取房间内所有玩家,推送新玩家加入
+	var keys []string
+	for key := range *playerMap {
+		keys = append(keys, key)
+	}
+	sendClientMsg(keys, msg)
+}
+
+// 给房间所有人发送消息
+func sendRoomMsg(playerMap *map[string]roomPlayer, msg SendMsg, noSendKey string) {
+	//获取房间内所有玩家,推送新玩家加入
+	var keys []string
+	for key := range *playerMap {
+		if key != noSendKey {
+			keys = append(keys, key)
+		}
+
+	}
+	sendClientMsg(keys, msg)
+}
+
+func formatPlayerSendMsg(player roomPlayer) SendMsg {
+	return SendMsg{"name": player.Name, "pos": strconv.Itoa(player.Pos), "state": strconv.Itoa(player.State)}
 }
