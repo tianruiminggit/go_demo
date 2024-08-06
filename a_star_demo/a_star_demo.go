@@ -65,9 +65,10 @@ func main() {
 	//fmt.Println("hell A Star Web")
 	http.HandleFunc("/getMap", getMap)
 	http.HandleFunc("/getRoad", getRoad)
-	err := http.ListenAndServe("192.168.4.65:8099", nil)
+	//err := http.ListenAndServe("192.168.4.65:8099", nil)
+	err := http.ListenAndServe("10.60.58.45:8099", nil)
 	if err != nil {
-		//fmt.Println("http_err", err)
+		fmt.Println("http_err", err)
 	}
 }
 
@@ -125,12 +126,21 @@ func getRoad(rw http.ResponseWriter, req *http.Request) {
 
 func makeMap(size, limit int) [][]posNode {
 	allNode := make([][]posNode, size)
+	//随机障碍物坐标
+	limitMap := make(map[int]bool)
+	for i := 0; i < limit; {
+		iid := getXYId(rand.Intn(size), rand.Intn(size))
+		if !limitMap[iid] {
+			limitMap[iid] = true
+			i++
+		}
+	}
 	for i := range allNode {
 		allNode[i] = make([]posNode, size)
 		for j := range allNode[i] {
 			isPass := true
-			if rand.Float64() < 0.4 && limit > 0 {
-				limit--
+			iid := getXYId(i, j)
+			if limitMap[iid] {
 				isPass = false
 			}
 			allNode[i][j] = posNode{position{float64(i), float64(j)}, isPass}
@@ -236,4 +246,9 @@ func makeLine(closeSet *[]gNode) []position {
 		Line = append(Line, GNode.pos)
 	}
 	return Line
+}
+
+// 获取x,y的id
+func getXYId(x, y int) int {
+	return x<<8 + y
 }
